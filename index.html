@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lomba Offline</title>
+    <style>
+      :root {
+        --bg: #f5f6fa;
+        --card: #fff;
+        --tx: #1b1f2a;
+        --mut: #6b7280;
+        --pri: #2563eb;
+        --bad: #dc2626;
+        --ok: #16a34a;
+        --bd: #e5e7eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1218;
+          --card: #181c25;
+          --tx: #e8eaf0;
+          --mut: #9aa3b2;
+          --bd: #2a3040;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--tx);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 16px;
+        padding: 24px;
+        width: 100%;
+        max-width: 560px;
+      }
+      h1 {
+        font-size: 1.3rem;
+        margin: 0 0 8px;
+      }
+      p {
+        line-height: 1.5;
+      }
+      .mut {
+        color: var(--mut);
+        font-size: 0.9rem;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        margin: 6px 0 12px;
+        border-radius: 10px;
+        border: 1px solid var(--bd);
+        background: transparent;
+        color: var(--tx);
+        font-size: 1rem;
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--pri);
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .opt {
+        background: transparent;
+        color: var(--tx);
+        border: 1px solid var(--bd);
+        text-align: left;
+      }
+      .opt.sel {
+        border-color: var(--pri);
+        background: rgba(37, 99, 235, 0.12);
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      #timer {
+        font-weight: 700;
+        font-size: 1.4rem;
+      }
+      #timer.low {
+        color: var(--bad);
+      }
+      .bar {
+        height: 6px;
+        background: var(--bd);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      #fill {
+        height: 100%;
+        background: var(--pri);
+        width: 100%;
+      }
+      #warn {
+        background: rgba(220, 38, 38, 0.12);
+        color: var(--bad);
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        display: none;
+      }
+      .hide {
+        display: none;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      body {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+      input {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      #cover {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        z-index: 9;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      @media print {
+        body {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <section id="s-login">
+        <h1 id="judul"></h1>
+        <p class="mut">
+          Soal dikerjakan dalam keadaan <b>offline</b>. Jika internet terdeteksi
+          menyala saat mengerjakan, ujian langsung diakhiri. Setiap soal punya
+          batas waktu sendiri dan tidak bisa diulang.
+        </p>
+        <p id="jadwal" class="mut"></p>
+        <label>Nama lengkap</label><input id="nama" autocomplete="off" />
+        <label>Kode peserta</label><input id="kode" autocomplete="off" />
+        <button id="btn-login">Lanjut</button>
+      </section>
+
+      <section id="s-gate" class="hide">
+        <h1>Matikan internet sekarang</h1>
+        <p>
+          Aktifkan <b>mode pesawat</b> (matikan data seluler dan WiFi). Tombol
+          mulai aktif setelah koneksi terdeteksi mati.
+        </p>
+        <p id="gate-status" class="mut">Memeriksa koneksi…</p>
+        <button id="btn-mulai" disabled>Mulai ujian</button>
+        <p class="mut">Jangan refresh atau tutup halaman ini selama offline.</p>
+      </section>
+
+      <section id="s-soal" class="hide">
+        <div class="top">
+          <span class="mut" id="nomor"></span><span id="timer"></span>
+        </div>
+        <div class="bar"><div id="fill"></div></div>
+        <div id="warn"></div>
+        <p id="teks" style="font-weight: 600"></p>
+        <div id="opsi"></div>
+        <button id="btn-next">Kunci jawaban &amp; lanjut</button>
+      </section>
+
+      <section id="s-selesai" class="hide">
+        <h1 id="sel-judul">Ujian selesai</h1>
+        <p id="sel-info"></p>
+        <button id="btn-kirim">Kirim jawaban</button>
+        <p id="kirim-status" class="mut"></p>
+      </section>
+    </div>
+    <div id="cover">
+      <div>
+        <h1>Kembali ke halaman ujian</h1>
+        <p>Soal disembunyikan saat halaman tidak aktif.</p>
+      </div>
+    </div>
+
+    <script>
+      /* ========== KONFIGURASI (ubah di sini) ========== */
+      const CONFIG = {
+        NAMA_LOMBA: "Lomba Pengetahuan Umum nack BD😎",
+        APPS_SCRIPT_URL:
+          "https://script.google.com/macros/s/AKfycbwp6xBun6x1hq2OJqjEyct47vDTNBY2ZrYlHu8cfJQyknmt6E9i8Bn82iHkLOohFnY9/exec",
+        WAKTU_MULAI: "", // tombol baru aktif jam ini (WITA); "" = tanpa jadwal
+        WAKTU_TUTUP: "", // batas terakhir masuk; "" = tanpa batas
+        TOLERANSI_TAB: 1, // pindah tab/app/split-screen: 0 = langsung selesai; 1 = 1x peringatan
+        TOLERANSI: 0, // 0 = langsung selesai saat online terdeteksi; 1 = 1x peringatan dulu
+        PING_URL: "https://www.gstatic.com/generate_204",
+        PING_MS: 2000, // interval cek koneksi saat ujian
+        OFFLINE_BERTURUT: 2, // berapa kali cek offline berturut-turut sebelum boleh mulai
+      };
+      /* Soal: opsi berupa teks, jawaban benar ada di Code.gs (KUNCI), bukan di sini. waktu = detik */
+      const SOAL = [
+        {
+          q: "Rumus kimia air adalah…",
+          opsi: ["H2O", "CO2", "O2", "NaCl"],
+          waktu: 15,
+        },
+        {
+          q: "Ibu kota Jepang adalah…",
+          opsi: ["Osaka", "Kyoto", "Tokyo", "Nagoya"],
+          waktu: 7,
+        },
+        {
+          q: "Proklamasi kemerdekaan Indonesia dibacakan pada tahun…",
+          opsi: ["1942", "1945", "1949", "1950"],
+          waktu: 10,
+        },
+        {
+          q: "Penemu bola lampu pijar yang paling dikenal luas adalah…",
+          opsi: [
+            "Nikola Tesla",
+            "Alexander Graham Bell",
+            "Isaac Newton",
+            "Thomas Alva Edison",
+          ],
+          waktu: 10,
+        },
+        {
+          q: "Berapa hasil 15% dari 200?",
+          opsi: ["20", "25", "30", "35"],
+          waktu: 30,
+        },
+        {
+          q: "Organ yang menghasilkan hormon insulin adalah…",
+          opsi: ["Hati", "Pankreas", "Ginjal", "Lambung"],
+          waktu: 10,
+        },
+        {
+          q: "Sumpah Pemuda dicetuskan pada tahun…",
+          opsi: ["1908", "1945", "1966", "1928"],
+          waktu: 10,
+        },
+        {
+          q: "Benua terluas di dunia adalah…",
+          opsi: ["Asia", "Afrika", "Amerika Utara", "Eropa"],
+          waktu: 10,
+        },
+        {
+          q: "Gaya yang menarik benda ke pusat bumi disebut gaya…",
+          opsi: ["Gravitasi", "Gesek", "Magnet", "Pegas"],
+          waktu: 10,
+        },
+        {
+          q: "Sila ketiga Pancasila berbunyi…",
+          opsi: [
+            "Ketuhanan Yang Maha Esa",
+            "Kemanusiaan yang adil dan beradab",
+            "Persatuan Indonesia",
+            "Keadilan sosial bagi seluruh rakyat Indonesia",
+          ],
+          waktu: 10,
+        },
+      ];
+      /* ================================================= */
+
+      const $ = (id) => document.getElementById(id);
+      const KEY = "lomba_state_v1";
+      let S = null,
+        tickId = null,
+        monId = null,
+        gateId = null;
+
+      const save = () => {
+        try {
+          localStorage.setItem(KEY, JSON.stringify(S));
+        } catch (e) {}
+      };
+      const load = () => {
+        try {
+          return JSON.parse(localStorage.getItem(KEY));
+        } catch (e) {
+          return null;
+        }
+      };
+      const show = (id) => {
+        ["s-login", "s-gate", "s-soal", "s-selesai"].forEach((s) =>
+          $(s).classList.toggle("hide", s !== id),
+        );
+      };
+
+      /* true = online (ping berhasil), false = offline */
+      async function ping() {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), 2500);
+        try {
+          await fetch(CONFIG.PING_URL + "?t=" + Date.now(), {
+            mode: "no-cors",
+            cache: "no-store",
+            signal: c.signal,
+          });
+          return true;
+        } catch (e) {
+          return false;
+        } finally {
+          clearTimeout(t);
+        }
+      }
+
+      /* ---------- Login ---------- */
+      $("judul").textContent = CONFIG.NAMA_LOMBA;
+      document.title = CONFIG.NAMA_LOMBA;
+      $("btn-login").onclick = () => {
+        const nama = $("nama").value.trim(),
+          kode = $("kode").value.trim();
+        if (nama.length < 2 || !kode) {
+          alert("Isi nama dan kode peserta.");
+          return;
+        }
+        const tutup = CONFIG.WAKTU_TUTUP ? Date.parse(CONFIG.WAKTU_TUTUP) : 0;
+        if (tutup && Date.now() > tutup) {
+          alert("Waktu masuk sudah ditutup.");
+          return;
+        }
+        const acak = (a) => {
+          a = a.slice();
+          for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+          }
+          return a;
+        };
+        S = {
+          nama,
+          kode,
+          status: "gate",
+          idx: 0,
+          qEnd: 0,
+          jawaban: SOAL.map(() => null),
+          pelanggaran: 0,
+          pindahTab: 0,
+          log: [],
+          urut: acak(SOAL.map((_, i) => i)),
+          opsiUrut: SOAL.map((q) => acak(q.opsi.map((_, i) => i))),
+          mulai: 0,
+          selesai: 0,
+          alasan: "",
+          subId:
+            Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+        };
+        save();
+        openGate();
+      };
+
+      const tMulai = CONFIG.WAKTU_MULAI ? Date.parse(CONFIG.WAKTU_MULAI) : 0;
+      function cekJadwal() {
+        const sisa = tMulai - Date.now();
+        $("btn-login").disabled = sisa > 0;
+        const d = Math.ceil(sisa / 1000);
+        $("jadwal").textContent =
+          sisa > 0
+            ? "Lomba dimulai dalam " +
+              Math.floor(d / 3600) +
+              "j " +
+              Math.floor((d % 3600) / 60) +
+              "m " +
+              (d % 60) +
+              "d"
+            : "";
+      }
+      if (tMulai) {
+        cekJadwal();
+        setInterval(cekJadwal, 1000);
+      }
+
+      /* ---------- Gerbang offline ---------- */
+      function openGate() {
+        show("s-gate");
+        $("btn-mulai").disabled = true;
+        let ok = 0;
+        clearInterval(gateId);
+        gateId = setInterval(async () => {
+          const online = await ping();
+          ok = online ? 0 : ok + 1;
+          const siap = ok >= CONFIG.OFFLINE_BERTURUT;
+          $("btn-mulai").disabled = !siap;
+          $("gate-status").innerHTML = siap
+            ? '<span class="ok">Offline terdeteksi. Siap dimulai.</span>'
+            : '<span class="bad">Internet masih menyala. Matikan data/WiFi.</span>';
+        }, 1000);
+      }
+      $("btn-mulai").onclick = () => {
+        clearInterval(gateId);
+        S.status = "berjalan";
+        if (!S.mulai) {
+          S.mulai = Date.now();
+          S.qEnd = Date.now() + cur().waktu * 1000;
+        }
+        save();
+        startExam();
+      };
+
+      /* ---------- Ujian ---------- */
+      function startExam() {
+        show("s-soal");
+        renderSoal();
+        S.ukuran = [innerWidth, innerHeight];
+        save();
+        clearInterval(tickId);
+        clearInterval(monId);
+        tickId = setInterval(tick, 250);
+        monId = setInterval(monitor, CONFIG.PING_MS);
+      }
+      const cur = () => SOAL[S.urut[S.idx]];
+      function renderSoal() {
+        const qi = S.urut[S.idx],
+          q = SOAL[qi];
+        $("nomor").textContent = "Soal " + (S.idx + 1) + " / " + SOAL.length;
+        $("teks").textContent = q.q;
+        const box = $("opsi");
+        box.innerHTML = "";
+        S.opsiUrut[qi].forEach((i) => {
+          const b = document.createElement("button");
+          b.className = "opt" + (S.jawaban[qi] === i ? " sel" : "");
+          b.textContent = q.opsi[i];
+          b.onclick = () => {
+            S.jawaban[qi] = i;
+            save();
+            renderSoal();
+          };
+          box.appendChild(b);
+        });
+      }
+      function tick() {
+        while (S.status === "berjalan" && Date.now() >= S.qEnd) {
+          if (!lanjut(S.qEnd)) return;
+        }
+        const sisa = Math.max(0, S.qEnd - Date.now()),
+          total = cur().waktu * 1000;
+        const d = Math.ceil(sisa / 1000);
+        $("timer").textContent =
+          Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0");
+        $("timer").classList.toggle("low", d <= 5);
+        $("fill").style.width = (sisa / total) * 100 + "%";
+      }
+      /* pindah ke soal berikutnya; base = patokan waktu berakhir soal sebelumnya (anti-drift) */
+      function lanjut(base) {
+        S.idx++;
+        if (S.idx >= SOAL.length) {
+          selesai("selesai");
+          return false;
+        }
+        S.qEnd = (base || Date.now()) + cur().waktu * 1000;
+        save();
+        renderSoal();
+        return true;
+      }
+      $("btn-next").onclick = () => lanjut(Date.now());
+
+      async function monitor() {
+        if (S.status !== "berjalan") return;
+        if (await ping()) {
+          S.pelanggaran++;
+          save();
+          if (S.pelanggaran > CONFIG.TOLERANSI) {
+            selesai("online");
+            return;
+          }
+          const w = $("warn");
+          w.style.display = "block";
+          w.textContent =
+            "Internet terdeteksi menyala! Matikan segera. Sisa toleransi: " +
+            (CONFIG.TOLERANSI - S.pelanggaran + 1) +
+            "x";
+          setTimeout(() => (w.style.display = "none"), 4000);
+        }
+      }
+      /* pelanggaran fokus: pindah tab/app, split-screen, ukuran layar berubah */
+      let lastV = 0;
+      function pelanggaranFokus(jenis) {
+        if (!S || S.status !== "berjalan") return;
+        $("cover").style.display = "flex";
+        if (Date.now() - lastV < 1500) return; // satu kejadian sering memicu beberapa event
+        lastV = Date.now();
+        S.pindahTab++;
+        S.log.push(jenis);
+        save();
+        if (S.pindahTab > CONFIG.TOLERANSI_TAB) selesai("pindah_tab");
+      }
+      const pulih = () => {
+        if (document.hasFocus() && !document.hidden)
+          $("cover").style.display = "none";
+      };
+      document.addEventListener("visibilitychange", () =>
+        document.hidden ? pelanggaranFokus("tab") : pulih(),
+      );
+      addEventListener("blur", () => pelanggaranFokus("blur"));
+      addEventListener("focus", pulih);
+      addEventListener("resize", () => {
+        if (!S || S.status !== "berjalan" || !S.ukuran) return;
+        const [w, h] = S.ukuran;
+        if (
+          Math.abs(innerWidth - w) / w > 0.2 ||
+          Math.abs(innerHeight - h) / h > 0.2
+        ) {
+          S.ukuran = [innerWidth, innerHeight];
+          pelanggaranFokus("layar");
+        }
+      });
+
+      /* ---------- Selesai & kirim ---------- */
+      function selesai(alasan) {
+        clearInterval(tickId);
+        clearInterval(monId);
+        $("cover").style.display = "none";
+        S.status = "selesai";
+        S.alasan = alasan;
+        S.selesai = Date.now();
+        save();
+        tampilSelesai();
+      }
+      function tampilSelesai() {
+        show("s-selesai");
+        const stop = S.alasan !== "selesai";
+        $("sel-judul").textContent = stop
+          ? "Ujian dihentikan"
+          : "Ujian selesai";
+        $("sel-info").textContent =
+          (S.alasan === "online"
+            ? "Internet terdeteksi menyala saat ujian. "
+            : S.alasan === "pindah_tab"
+              ? "Kamu meninggalkan halaman ujian. "
+              : "") +
+          (stop ? "Jawaban yang sudah terisi tetap dikirim. " : "") +
+          "Nyalakan internet, lalu tekan Kirim jawaban.";
+      }
+      $("btn-kirim").onclick = async () => {
+        const btn = $("btn-kirim"),
+          st = $("kirim-status");
+        btn.disabled = true;
+        st.textContent = "Mengirim…";
+        try {
+          await fetch(CONFIG.APPS_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              nama: S.nama,
+              kode: S.kode,
+              jawaban: S.jawaban,
+              alasan: S.alasan,
+              pelanggaran: S.pelanggaran,
+              pindahTab: S.pindahTab,
+              log: S.log,
+              mulai: S.mulai,
+              selesai: S.selesai,
+              subId: S.subId,
+            }),
+          });
+          S.status = "terkirim";
+          save();
+          tampilTerkirim();
+        } catch (e) {
+          st.innerHTML =
+            '<span class="bad">Gagal terhubung: ' + e.message + "</span>";
+          btn.disabled = false;
+        }
+      };
+      function tampilTerkirim() {
+        show("s-selesai");
+        $("sel-judul").innerHTML = '<span class="ok">Jawaban terkirim</span>';
+        $("sel-info").textContent =
+          "Terima kasih, " + S.nama + ". Kamu boleh menutup halaman ini.";
+        $("btn-kirim").classList.add("hide");
+        $("kirim-status").textContent = "";
+      }
+
+      /* ---------- Pembatasan ---------- */
+      addEventListener("beforeunload", (e) => {
+        if (S && S.status === "berjalan") {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      });
+      ["contextmenu", "copy", "cut", "dragstart", "selectstart"].forEach((ev) =>
+        document.addEventListener(ev, (e) => {
+          if (e.target.tagName !== "INPUT") e.preventDefault();
+        }),
+      );
+      document.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (
+          e.key === "F12" ||
+          e.key === "PrintScreen" ||
+          ((e.ctrlKey || e.metaKey) &&
+            ["c", "u", "s", "p", "a", "i", "j"].includes(k))
+        )
+          e.preventDefault();
+      });
+      document.addEventListener("keyup", (e) => {
+        if (e.key === "PrintScreen") {
+          try {
+            navigator.clipboard.writeText("");
+          } catch (_) {}
+        }
+      });
+
+      /* ---------- Pulihkan sesi ---------- */
+      S = load();
+      if (S) {
+        if (S.status === "terkirim") tampilTerkirim();
+        else if (S.status === "selesai") tampilSelesai();
+        else if (S.status === "berjalan") {
+          S.pindahTab++;
+          S.log.push("reload");
+          save();
+          if (S.pindahTab > CONFIG.TOLERANSI_TAB) selesai("pindah_tab");
+          else openGate();
+        } else if (S.status === "gate") openGate();
+      }
+    </script>
+  </body>
+</html>
