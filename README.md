@@ -76,6 +76,3 @@ Push the files to GitHub, then enable **Settings > Pages > Deploy from branch (m
 └── README.md
 ```
 
-## License
-
-MIT
